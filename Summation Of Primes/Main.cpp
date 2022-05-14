@@ -1,13 +1,19 @@
+//A program to calculate the sum of all prime numbers below two million.
+//https://github.com/Kango-Senpai/euler-10
+//This code is a solution to project euler problem #10. This is intended solely as a learning tool.
 #include <iostream>
 #include <thread>
 #include <future>
 #include <time.h>
 #include <vector>
 #include <string>
+#include <cmath>
 using std::vector;
 using std::shared_future;
 
-bool isPrimeV2(long long number) {
+bool isPrime(long long number) {
+	//Loop up until the floored square root of the number and count the multiples.
+	long x = floor(sqrt(number));
 	int count = 2;
 	if (number < 2) {
 		return false;
@@ -15,11 +21,12 @@ bool isPrimeV2(long long number) {
 	if (number == 2) {
 		return true;
 	}
-	for (int i = 2; i <= number / 2; i++) {
+	for (int i = 2; i <= x; i++) {
 		if (number % i == 0) {
 			count++;
 		}
 	}
+	//If the number has more than 2 multiples, it is not prime.
 	if (count == 2) {
 		return true;
 	}
@@ -27,56 +34,49 @@ bool isPrimeV2(long long number) {
 		return false;
 	}
 }
+long childThread(long work) {
+	//Simple child thread for doing the isPrime calculation.
+	if (isPrime(work)) {
+		return work;
+	}
+	else {
+		return 0;
+	}
+}
+void Solve() {//18-21 secs
 
-long doWork(long index, int inc) {
-	//std::cout << "Starting at index " << index << std::endl;
-	long tally = 0;
-	if (index < 2) {
-		tally += 2;
+	vector<long> pool;
+	vector<long>::iterator backwardIndex;
+	vector<shared_future<long>> threads;
+	int threadCount = 16;//One million must be divisible by the thread count.
+	//Create a work pool.
+	for (long i = 1; i < 2000000; i += 2) {
+		pool.push_back(i);
 	}
-	long privateIndex = index;
-	if (privateIndex % 2 == 0) {
-		privateIndex += 1;
-	}
-	for (long i = privateIndex; i < privateIndex + inc; i += 2) {
-		if (isPrimeV2(i)) {
-			tally += i;
+	long long answer = 2;//Two is prime, but is not in our work pool. Start the answer at two.
+	while (!pool.empty()) {
+		
+		for (int i = 0; i < threadCount; i++) {
+			backwardIndex = pool.end() - 1;//Set the iterator to the last value in the vector.
+			shared_future<long> ret = std::async(&childThread, *backwardIndex);//Assign the child thread work from the pool.
+			pool.erase(backwardIndex);//Remove work from the pool.
+			threads.push_back(ret); //Add shared future to vector for later value retrieval.
 		}
+		for (vector<shared_future<long>>::iterator i = threads.begin(); i < threads.end(); i++) {
+			shared_future<long> ret = *i;//Create a shared future object by pointing to iterator 'i'.
+			answer += ret.get();//Get the value from the task.
+		}
+		threads.clear();//Clear threads vector.
 	}
-	return tally;
+	std::cout << "The answer is: " << answer << std::endl;//...Print the answer.
 }
 
-
-void Solve() {
-	long long answer = 0;
-	//answer = doWork(0, 100000);
-	std::cout << "Creating threads...\n";
-	int max = 2000000;
-	int threadCount = 100;
-	int increment = max / threadCount;
-	long start = 0;
-	int returnCount = 0;
-	std::vector<std::shared_future<long>> threads;
-	for (int i = 0; i < threadCount; i++) {
-		std::shared_future<long> ret = std::async(&doWork, start, increment);
-		threads.push_back(ret);
-		start += increment;
-	}
-	std::cout << "Getting values from threads...\n";
-	for (vector<shared_future<long>>::iterator i = threads.begin(); i < threads.end(); i++) {
-		shared_future<long> ret = *i;
-		answer += ret.get();
-		std::cout << "Got return from thread " << returnCount << std::endl;
-		returnCount++;
-	}
-	std::cout << "Answer: " << answer << std::endl;
-}
 
 int main()
 {
-	clock_t tStart = clock();
+	clock_t tStart = clock();//New clock_t instance to time the solve.
 	Solve();
-	double time = (clock() - tStart) / CLOCKS_PER_SEC;
+	double time = (clock() - tStart) / CLOCKS_PER_SEC;//Calculate the solve time and write to the console.
 	std::cout << "Solve time: " << time << " secs.\n";
 	return 0;
 }
