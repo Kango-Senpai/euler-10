@@ -43,7 +43,7 @@ long childThread(long work) {
 		return 0;
 	}
 }
-void Solve() {//18-21 secs
+void Solve() {//3 secs
 
 	vector<long> pool;
 	vector<long>::iterator backwardIndex;
